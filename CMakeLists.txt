@@ -7,5 +7,5 @@ SET(CMAKE_CXX_FLAGS -pthread)
 
 include_directories(inc)
 
-set(SOURCE_FILES src/main.cpp src/server.cpp src/threadpool.cpp )
+set(SOURCE_FILES src/main.cpp src/server.cpp src/threadpool.cpp src/epollengine.cpp )
 add_executable(webserver ${SOURCE_FILES})

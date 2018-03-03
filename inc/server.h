@@ -6,28 +6,29 @@
 #define WEBSERVER_SERVER_H
 
 
-#define MAX_EPOLL_EVENTS 1024
-#define EPOLL_FD_COUNT 1024
-#define LISTEN_QUEUE 1024
-#define TIMEOUT 50
-
 #include <glob.h>
 #include <netinet/in.h>
-#include <sys/epoll.h>
 #include <string>
+
+#include "threadpool.h"
+#include "epollengine.h"
+
+#define MAX_EPOLL_EVENT 300
+#define EPOLL_TIMEOUT 50
+
 
 class CServer {
 private:
 
     int listenfd;
     sockaddr_in serveraddr;
-
-    int epollfd;
-    epoll_event events[MAX_EPOLL_EVENTS];
+    bool stop;
+    CEpollEngine* epollEngine;
+    CThreadPool* threadPool;
 
 public:
 
-    CServer(const std::string& addr, const std::uint16_t& port);
+    CServer(const std::string& addr, const std::uint16_t& port,const std::uint32_t& queueSize);
     ~CServer();
 
     void Listen();

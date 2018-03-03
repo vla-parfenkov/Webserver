@@ -12,7 +12,7 @@
 #include <mutex>
 #include <atomic>
 
-#define MIN_THREADS_COUNT 2
+#define MIN_THREADS_COUNT 3
 
 class CThreadPool {
 
