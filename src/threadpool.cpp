@@ -2,6 +2,7 @@
 // Created by parfenkov on 03.03.18.
 //
 
+#include <cstring>
 #include "threadpool.h"
 
 CThreadPool::CThreadPool(size_t threadCount) : stop(false) {
@@ -47,7 +48,7 @@ void CThreadPool::init(size_t threadCount) {
     } catch (...)
     {
         stop = true;
-        throw;
+        throw std::runtime_error("threads create" + std::string(strerror(errno)));;
     }
 }
 

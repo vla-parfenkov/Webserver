@@ -4,6 +4,7 @@
 
 #include <arpa/inet.h>
 #include <cstring>
+#include <fcntl.h>
 #include "server.h"
 
 CServer::CServer(const std::string &addr, const std::uint16_t &port, const std::uint32_t& queueSize) : stop(false){
@@ -12,7 +13,12 @@ CServer::CServer(const std::string &addr, const std::uint16_t &port, const std::
 
     listenfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (listenfd < 0 ) {
-        throw std::runtime_error("exception socket create");
+        throw std::runtime_error("exception socket create" + std::string(strerror(errno)));
+    }
+
+    int flags = fcntl(listenfd, F_GETFL, 0);
+    if (fcntl(listenfd, F_SETFL, flags | O_NONBLOCK) == -1) {
+        throw std::runtime_error("nonblocked: " + std::string(strerror(errno)));
     }
 
     serveraddr.sin_family = AF_INET;
@@ -43,9 +49,12 @@ void CServer::Listen() {
     socklen_t clientlen;
 
     while(!stop) {
-        int coonectionfd = accept(listenfd, (sockaddr*)&clientaddr, &clientlen);
+        ssize_t coonectionfd = accept(listenfd, (sockaddr*)&clientaddr, &clientlen);
         if (coonectionfd >= 0) {
-            epollEngine->AddFd(coonectionfd);
+            int flags = fcntl((int)coonectionfd, F_GETFL, 0);
+            if (fcntl((int)coonectionfd, F_SETFL, flags | O_NONBLOCK) != -1) {
+                epollEngine->AddFd((int)coonectionfd);
+            }
         }
     }
 }

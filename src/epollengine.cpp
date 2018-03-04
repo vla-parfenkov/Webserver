@@ -13,7 +13,7 @@ CEpollEngine::CEpollEngine(int maxEpollEvents, int timeout) :
 
 void CEpollEngine::AddFd(int clientfd) {
     epoll_event ev;
-    ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLOUT;
+    ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLOUT | EPOLLET;
     ev.data.fd = clientfd;
     epoll_ctl(epollfd, EPOLL_CTL_ADD, clientfd, &ev);
 }
@@ -22,8 +22,8 @@ void CEpollEngine::AddFd(int clientfd) {
 void CEpollEngine::Run() {
     epoll_event events[maxEpollEvents];
     while (!stop) {
-        int fdcount = epoll_wait(epollfd, events, maxEpollEvents, timeout);
-        for (int i = 0; i < fdcount; ++i) {
+        ssize_t fdcount = epoll_wait(epollfd, events, maxEpollEvents, timeout);
+        for (size_t i = 0; i < fdcount; ++i) {
             if ((events[i].events & EPOLLERR) || (events[i].events & EPOLLHUP)){
                 //client dead
             }
