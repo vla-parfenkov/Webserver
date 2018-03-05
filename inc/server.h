@@ -7,7 +7,6 @@
 
 
 #include <glob.h>
-#include <netinet/in.h>
 #include <string>
 
 #include "threadpool.h"
@@ -21,14 +20,15 @@ class CServer {
 private:
 
     int listenfd;
-    sockaddr_in serveraddr;
     bool stop;
     CEpollEngine* epollEngine;
     CThreadPool* threadPool;
+    CClient* client;
 
 public:
 
-    CServer(const std::string& addr, const std::uint16_t& port,const std::uint32_t& queueSize);
+    CServer(const std::string& addr, const std::uint16_t& port,const std::uint32_t& queueSize,
+            const std::string& root, size_t threadCount);
     ~CServer();
 
     void Listen();

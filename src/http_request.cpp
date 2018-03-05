@@ -11,7 +11,25 @@
 #include <chrono>
 #include "http_request.h"
 
-void CHTTPRequest::RequestHandle() {
+std::string CHTTPRequest::RequestHandle(std::string request)  {
+
+    std::string method, url, protocol = "HTTP/1.1";
+    std::istringstream istringstream(request);
+
+    if(!readReq(method, istringstream)) {
+        throw std::runtime_error("bad request");
+    }
+
+    if(!readReq(url, istringstream)) {
+        throw std::runtime_error("bad request");
+    }
+
+    if(!readReq(protocol, istringstream)) {
+        throw std::runtime_error("bad request");
+    }
+
+
+    url = urldecode(url);
     size_t  pos;
 
     while ((pos = url.find("/../")) != std::string::npos) {
@@ -23,19 +41,19 @@ void CHTTPRequest::RequestHandle() {
     }
 
     if (method == "GET") {
-        GET(url, protocol);
+        return GET(url, protocol);
     } else if (method == "HEAD") {
-        HEAD(url, protocol);
+        return HEAD(url, protocol);
     } else if (method == "POST" || method == "PUT" || method == "PATCH" ||
                method == "DELETE" || method == "TRACE" || method == "CONNECT" ||
                method == "OPTIONS") {
-        NotAllowed(protocol);
+        return NotAllowed(protocol);
     } else {
-        NotImplemented(protocol);
+        return NotImplemented(protocol);
     }
 }
 
-void CHTTPRequest::RequestAdd(char *request) {
+/*void CHTTPRequest::RequestAdd() {
     addBuffer(request);
 
     char * oldPos = requestBuff;
@@ -77,23 +95,23 @@ void CHTTPRequest::RequestAdd(char *request) {
     }
     isValid = true;
 
-}
+}*/
 
-void CHTTPRequest::addBuffer(char *newBuff) {
+/*void CHTTPRequest::addBuffer(char *newBuff) {
     size_t i = 0;
     while (newBuff != NULL) {
         requestBuff[bufferSize] = *(newBuff + i);
         i++;
         bufferSize++;
     }
-}
+}*/
 
-void CHTTPRequest::saveStr(std::string &str, char *begin, char* end) {
+/*void CHTTPRequest::saveStr(std::string &str, char *begin, char* end) {
     std::string res(begin, 0, end-begin);
     str = res;
-}
+}*/
 
-CHTTPRequest::CHTTPRequest(const std::string &root) : rootDir(root), bufferSize(0) {}
+CHTTPRequest::CHTTPRequest(const std::string &root) : rootDir(root) {}
 
 std::string CHTTPRequest::urldecode(const std::string& url) {
     std::string res;
@@ -115,9 +133,21 @@ std::string CHTTPRequest::urldecode(const std::string& url) {
     return res;
 }
 
+bool CHTTPRequest::readReq(std::string &str, std::istringstream &stream) {
 
+    while (stream.peek() != EOF) {
+        char c = (char)stream.get();
+        if (c == ' ' || c == '\r' || c == '\n' ) {
+            return true;
+        } else {
+            str.push_back(c);
+        }
+    }
 
-void CHTTPRequest::GET(const std::string &url, const std::string &protocol) {
+    return false;
+}
+
+std::string CHTTPRequest::GET(const std::string &url, const std::string &protocol) {
     std::string path = rootDir + url;
     int code;
     struct stat s;
@@ -135,17 +165,17 @@ void CHTTPRequest::GET(const std::string &url, const std::string &protocol) {
         std::string type = dir ? "html" : getFileType(url);
         struct stat file;
         stat(path.c_str(), &file);
-        header = buidHeader((size_t )file.st_size, type, protocol, getCode(code));
+        return buidHeader((size_t )file.st_size, type, protocol, getCode(code));
          //sent
     } else {
         code = (dir) ? 403 : 404;
-        header = buidHeader(strlen((dir) ? forbidden : notFound), "html", protocol, getCode(code));
+        return buidHeader(strlen((dir) ? forbidden : notFound), "html", protocol, getCode(code));
         //sent
     }
 
 }
 
-void CHTTPRequest::HEAD(const std::string &url, const std::string &protocol) {
+std::string CHTTPRequest::HEAD(const std::string &url, const std::string &protocol) {
     std::string path = rootDir + url;
     int code;
     struct stat s;
@@ -163,24 +193,24 @@ void CHTTPRequest::HEAD(const std::string &url, const std::string &protocol) {
         std::string type = dir ? "html" : getFileType(url);
         struct stat file;
         stat(path.c_str(), &file);
-        header = buidHeader((size_t )file.st_size, type, protocol, getCode(code));
+        return buidHeader((size_t )file.st_size, type, protocol, getCode(code));
         //sent
     } else {
         code = (dir) ? 403 : 404;
-        header = buidHeader(strlen((dir) ? forbidden : notFound), "html", protocol, getCode(code));
+        return buidHeader(strlen((dir) ? forbidden : notFound), "html", protocol, getCode(code));
         //sent
     }
 
 }
 
-void CHTTPRequest::NotAllowed(const std::string &protocol) {
+std::string CHTTPRequest::NotAllowed(const std::string &protocol) {
     const int code = 405;
-    header = buidHeader(strlen(notAllowed), "html", protocol, getCode(code));
+    return buidHeader(strlen(notAllowed), "html", protocol, getCode(code));
 }
 
-void CHTTPRequest::NotImplemented(const std::string &protocol) {
+std::string CHTTPRequest::NotImplemented(const std::string &protocol) {
     const int code = 501;
-    header = buidHeader(strlen(notImplemented), "html", protocol, getCode(code));
+    return buidHeader(strlen(notImplemented), "html", protocol, getCode(code));
 }
 
 bool CHTTPRequest::fileExists(const std::string &path) {
@@ -188,8 +218,8 @@ bool CHTTPRequest::fileExists(const std::string &path) {
 }
 
 std::string CHTTPRequest::getFileType(const std::string &path) {
-    size_t pos = url.find_last_of('.');
-    return (pos != std::string::npos) ? url.substr(pos + 1) : "txt";
+    size_t pos = path.find_last_of('.');
+    return (pos != std::string::npos) ? path.substr(pos + 1) : "txt";
 }
 
 std::string CHTTPRequest::getCode(int code) {

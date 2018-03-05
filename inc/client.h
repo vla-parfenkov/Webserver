@@ -8,24 +8,38 @@
 #define MAX_REQUEST_LEN 4096
 
 #include <iostream>
-#include <netinet/in.h>
+#include "http_request.h"
+#include "threadpool.h"
+
+enum ClientStatus{
+    WANT_READ, WANT_WRITE, WANT_CLOSE
+};
+
+struct ClientBuf {
+    int fd;
+    std::string data;
+    ClientStatus status;
+    ClientBuf(int fd) : status(WANT_READ) {}
+};
+
 
 class CClient {
 private:
-    int clientfd;
-
-    std::string clientRequest;
-
+    CHTTPRequest* httpRequest;
+    CThreadPool* threadPool;
 
 public:
-    CClient(int fd);
+    CClient(const std::string& root, CThreadPool* threadPoll);
     ~CClient();
 
-    void Write(const std::string& message);
-    std::string Read();
-    void Close();
+    void Write(int fd, const std::string& message);
+    void Read(ClientBuf* buf);
+    void Close(int fd);
 
 };
+
+
+
 
 
 #endif //WEBSERVER_СLIENT_H

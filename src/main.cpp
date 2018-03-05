@@ -1,22 +1,16 @@
 #include <iostream>
 
-//#include "threadpool.h"
+#include "server.h"
 
-/*void task_run () {
-    std::cout << "task run \n" ;
-    for (int i = 0; i < 1000000000; ++i) {
+int main(int argc, char* argv[]) {
+    std::string rootDir = argv[0];
+    rootDir = rootDir.substr(0, rootDir.find_last_of('/'));
 
-    }
-}*/
+    CServer* server = new CServer("0.0.0.0", 5000, 40, rootDir, 100);
 
-int main() {
-  /*  CThreadPool threadPool(5);
+    server->Listen();
 
-    for (int i = 0; i < 10 ; ++i) {
-        threadPool.AddTask(std::function<void()>(task_run));
-    }
-    for(;;) {}*/
-
+    delete server;
 
     return 0;
 }

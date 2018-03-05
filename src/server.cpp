@@ -7,9 +7,12 @@
 #include <fcntl.h>
 #include "server.h"
 
-CServer::CServer(const std::string &addr, const std::uint16_t &port, const std::uint32_t& queueSize) : stop(false){
-    threadPool = new CThreadPool;
-    epollEngine = new CEpollEngine(MAX_EPOLL_EVENT, EPOLL_TIMEOUT);
+CServer::CServer(const std::string &addr, const std::uint16_t &port, const std::uint32_t& queueSize,
+                 const std::string& root, size_t threadCount) : stop(false){
+    threadPool = new CThreadPool(threadCount);
+    client = new CClient(root, threadPool);
+    epollEngine = new CEpollEngine(MAX_EPOLL_EVENT, EPOLL_TIMEOUT, client, threadPool);
+    sockaddr_in serveraddr;
 
     listenfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (listenfd < 0 ) {
@@ -24,6 +27,7 @@ CServer::CServer(const std::string &addr, const std::uint16_t &port, const std::
     serveraddr.sin_family = AF_INET;
     inet_pton(AF_INET, addr.data(), &(serveraddr.sin_addr));
     serveraddr.sin_port  = htons(port);
+    //serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
     if (bind(listenfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
         throw std::runtime_error("bind: " + std::string(strerror(errno)));
@@ -42,6 +46,7 @@ CServer::CServer(const std::string &addr, const std::uint16_t &port, const std::
 CServer::~CServer() {
     delete epollEngine;
     delete threadPool;
+    delete client;
 }
 
 void CServer::Listen() {

@@ -6,6 +6,8 @@
 #define WEBSERVER_EPOLLENGINE_H
 
 #include <atomic>
+#include "client.h"
+#include "threadpool.h"
 
 class CEpollEngine {
 private:
@@ -13,9 +15,11 @@ private:
     int maxEpollEvents;
     int timeout;
     std::atomic_bool stop;
+    CClient* client;
+    CThreadPool* threadPool;
 
 public:
-    CEpollEngine(int maxEpollEvents, int timeout);
+    CEpollEngine(int maxEpollEvents, int timeout, CClient* client, CThreadPool* threadPool);
     ~CEpollEngine();
 
     void Run();

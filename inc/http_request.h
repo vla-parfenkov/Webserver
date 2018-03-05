@@ -14,12 +14,10 @@
 class CHTTPRequest {
 private:
     std::string rootDir;
-    char requestBuff[BUFFER_SIZE];
-    size_t bufferSize;
-    std::string method, url, protocol = "HTTP/1.1";
-    std::string header;
 
-    bool isValid;
+    //std::string header;
+
+    //bool isValid;
 
 
     std::unordered_map <std::string, std::string> mime_map =
@@ -56,25 +54,29 @@ private:
                     "<body><h1>501 Not Implemented</h1></body>"
                     "</html>";
 
-    void addBuffer(char *newBuff);
-    void saveStr(std::string& str, char* begin, char* end);
+    //void addBuffer(char *newBuff);
+    //void saveStr(std::string& str, char* begin, char* end);
+    bool readReq(std::string& str, std::istringstream& stream);
     std::string urldecode(const std::string& url);
     bool fileExists(const std::string& path);
     std::string getCode(int code);
     std::string getFileType(const std::string& path);
     std::string buidHeader(size_t fileLength, const std::string& fileType,
                            const std::string &protocol,  const std::string &code);
-    void GET(const std::string& url, const std::string& protocol);
-    void HEAD(const std::string& url, const std::string& protocol);
-    void NotAllowed(const std::string& protocol);
-    void NotImplemented(const std::string& protocol);
+    std::string GET(const std::string& url, const std::string& protocol);
+    std::string HEAD(const std::string& url, const std::string& protocol);
+    std::string NotAllowed(const std::string& protocol);
+    std::string NotImplemented(const std::string& protocol);
 
 
 
 public:
-    void RequestHandle();
+    std::string RequestHandle(std::string request);
     CHTTPRequest(const std::string& root);
-    void RequestAdd(char* request);
+    //void RequestAdd(char* request);
+
+    CHTTPRequest();
+    ~CHTTPRequest(){};
 
 
 };
