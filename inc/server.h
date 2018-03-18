@@ -24,6 +24,7 @@ private:
     CEpollEngine* epollEngine;
     CThreadPool* threadPool;
     CClient* client;
+    CClientsBuffer* clientsBuffer;
 
 public:
 

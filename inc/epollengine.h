@@ -8,6 +8,7 @@
 #include <atomic>
 #include "client.h"
 #include "threadpool.h"
+#include "client_buffer.h"
 
 class CEpollEngine {
 private:
@@ -17,9 +18,10 @@ private:
     std::atomic_bool stop;
     CClient* client;
     CThreadPool* threadPool;
+    CClientsBuffer* clientsBuffer;
 
 public:
-    CEpollEngine(int maxEpollEvents, int timeout, CClient* client, CThreadPool* threadPool);
+    CEpollEngine(int maxEpollEvents, int timeout, CClient* client, CThreadPool* threadPool, CClientsBuffer* clientsBuffer);
     ~CEpollEngine();
 
     void Run();

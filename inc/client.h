@@ -10,30 +10,23 @@
 #include <iostream>
 #include "http_request.h"
 #include "threadpool.h"
+#include "client_buffer.h"
 
-enum ClientStatus{
-    WANT_READ, WANT_WRITE, WANT_CLOSE
-};
 
-struct ClientBuf {
-    int fd;
-    std::string data;
-    ClientStatus status;
-    ClientBuf(int fd) : status(WANT_READ) {}
-};
-
+class CHTTPRequest;
 
 class CClient {
 private:
     CHTTPRequest* httpRequest;
     CThreadPool* threadPool;
+    CClientsBuffer* clientsBuffer;
 
 public:
-    CClient(const std::string& root, CThreadPool* threadPoll);
+    CClient(const std::string& root, CThreadPool* threadPoll, CClientsBuffer* cClientsBuffer);
     ~CClient();
 
     void Write(int fd, const std::string& message);
-    void Read(ClientBuf* buf);
+    void Read(int fd);
     void Close(int fd);
 
 };

@@ -5,13 +5,16 @@
 #include <arpa/inet.h>
 #include <cstring>
 #include <fcntl.h>
+#include <sys/socket.h>
+#include <zconf.h>
 #include "server.h"
 
 CServer::CServer(const std::string &addr, const std::uint16_t &port, const std::uint32_t& queueSize,
                  const std::string& root, size_t threadCount) : stop(false){
     threadPool = new CThreadPool(threadCount);
-    client = new CClient(root, threadPool);
-    epollEngine = new CEpollEngine(MAX_EPOLL_EVENT, EPOLL_TIMEOUT, client, threadPool);
+    clientsBuffer = new CClientsBuffer();
+    client = new CClient(root, threadPool, clientsBuffer);
+    epollEngine = new CEpollEngine(MAX_EPOLL_EVENT, EPOLL_TIMEOUT, client, threadPool, clientsBuffer);
     sockaddr_in serveraddr;
 
     listenfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);

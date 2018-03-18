@@ -11,7 +11,8 @@
 #include <chrono>
 #include "http_request.h"
 
-std::string CHTTPRequest::RequestHandle(std::string request)  {
+
+void CHTTPRequest::RequestHandle(std::string request, CClient* client, int fd)  {
 
     std::string method, url, protocol = "HTTP/1.1";
     std::istringstream istringstream(request);
@@ -41,16 +42,20 @@ std::string CHTTPRequest::RequestHandle(std::string request)  {
     }
 
     if (method == "GET") {
-        return GET(url, protocol);
+        GET(url, protocol, client, fd);
     } else if (method == "HEAD") {
-        return HEAD(url, protocol);
+        HEAD(url, protocol, client, fd);
     } else if (method == "POST" || method == "PUT" || method == "PATCH" ||
                method == "DELETE" || method == "TRACE" || method == "CONNECT" ||
                method == "OPTIONS") {
-        return NotAllowed(protocol);
+        NotAllowed(protocol, client, fd);
     } else {
-        return NotImplemented(protocol);
+        NotImplemented(protocol, client, fd);
     }
+
+    std::function<void()> onClose;
+    onClose = std::bind(&CClient::Close, &*client, fd);
+    threadPool->AddTask(onClose);
 }
 
 /*void CHTTPRequest::RequestAdd() {
@@ -111,7 +116,7 @@ std::string CHTTPRequest::RequestHandle(std::string request)  {
     str = res;
 }*/
 
-CHTTPRequest::CHTTPRequest(const std::string &root) : rootDir(root) {}
+CHTTPRequest::CHTTPRequest(const std::string &root, CThreadPool* threadPool) : rootDir(root), threadPool(threadPool) {}
 
 std::string CHTTPRequest::urldecode(const std::string& url) {
     std::string res;
@@ -147,7 +152,7 @@ bool CHTTPRequest::readReq(std::string &str, std::istringstream &stream) {
     return false;
 }
 
-std::string CHTTPRequest::GET(const std::string &url, const std::string &protocol) {
+void CHTTPRequest::GET(const std::string &url, const std::string &protocol, CClient* client, int fd) {
     std::string path = rootDir + url;
     int code;
     struct stat s;
@@ -165,17 +170,38 @@ std::string CHTTPRequest::GET(const std::string &url, const std::string &protoco
         std::string type = dir ? "html" : getFileType(url);
         struct stat file;
         stat(path.c_str(), &file);
-        return buidHeader((size_t )file.st_size, type, protocol, getCode(code));
-         //sent
+        std::function<void()> onWrite;
+        onWrite = std::bind(&CClient::Write, &*client, fd,
+                            buidHeader((size_t )file.st_size, type, protocol, getCode(code)));
+
+        threadPool->AddTask(onWrite);
+        std::ifstream in(path);
+
+        char buffer[BUFFER_SIZE];
+        while (size_t count = (size_t)in.readsome(buffer, BUFFER_SIZE)) {
+            std::function<void()> onWrite;
+            onWrite = std::bind(&CClient::Write, &*client, fd,std::string(buffer, count));
+            threadPool->AddTask(onWrite);
+        }
+
+
     } else {
         code = (dir) ? 403 : 404;
-        return buidHeader(strlen((dir) ? forbidden : notFound), "html", protocol, getCode(code));
-        //sent
+        std::string responce  = buidHeader(strlen((dir) ? forbidden : notFound), "html", protocol, getCode(code));
+        responce.append("\r\n");
+        responce.append((dir) ? forbidden : notFound);
+
+        std::function<void()> onWrite;
+        onWrite = std::bind(&CClient::Write, &*client, fd,responce);
+
+        threadPool->AddTask(onWrite);
     }
+
+
 
 }
 
-std::string CHTTPRequest::HEAD(const std::string &url, const std::string &protocol) {
+void CHTTPRequest::HEAD(const std::string &url, const std::string &protocol, CClient* client, int fd) {
     std::string path = rootDir + url;
     int code;
     struct stat s;
@@ -193,24 +219,46 @@ std::string CHTTPRequest::HEAD(const std::string &url, const std::string &protoc
         std::string type = dir ? "html" : getFileType(url);
         struct stat file;
         stat(path.c_str(), &file);
-        return buidHeader((size_t )file.st_size, type, protocol, getCode(code));
-        //sent
+
+        std::function<void()> onWrite;
+        onWrite = std::bind(&CClient::Write, &*client, fd,
+                            buidHeader((size_t )file.st_size, type, protocol, getCode(code)));
+
+        threadPool->AddTask(onWrite);
     } else {
         code = (dir) ? 403 : 404;
-        return buidHeader(strlen((dir) ? forbidden : notFound), "html", protocol, getCode(code));
-        //sent
+
+        std::function<void()> onWrite;
+        onWrite = std::bind(&CClient::Write, &*client, fd,
+                            buidHeader(strlen((dir) ? forbidden : notFound), "html", protocol, getCode(code)));
+
+        threadPool->AddTask(onWrite);
     }
 
 }
 
-std::string CHTTPRequest::NotAllowed(const std::string &protocol) {
+void CHTTPRequest::NotAllowed(const std::string &protocol, CClient* client, int fd) {
     const int code = 405;
-    return buidHeader(strlen(notAllowed), "html", protocol, getCode(code));
+    std::string responce = buidHeader(strlen(notAllowed), "html", protocol, getCode(code));
+    responce.append("\r\n");
+    responce.append(notAllowed);
+
+    std::function<void()> onWrite;
+    onWrite = std::bind(&CClient::Write, &*client, fd, responce);
+
+    threadPool->AddTask(onWrite);
 }
 
-std::string CHTTPRequest::NotImplemented(const std::string &protocol) {
+void CHTTPRequest::NotImplemented(const std::string &protocol, CClient* client, int fd) {
     const int code = 501;
-    return buidHeader(strlen(notImplemented), "html", protocol, getCode(code));
+    std::string responce = buidHeader(strlen(notImplemented), "html", protocol, getCode(code));
+    responce.append("\r\n");
+    responce.append(notImplemented);
+
+    std::function<void()> onWrite;
+    onWrite = std::bind(&CClient::Write, &*client, fd, responce);
+
+    threadPool->AddTask(onWrite);
 }
 
 bool CHTTPRequest::fileExists(const std::string &path) {
@@ -249,7 +297,7 @@ std::string CHTTPRequest::buidHeader(size_t fileLength, const std::string &fileT
     response << protocol
              << ' ' << code << "\r\n"
              << "Server: WebServer \r\n"
-             << "Date: " << std::ctime(&t) << "\r\n"
+             << "Date: " << std::ctime(&t)
              << "Connection: close\r\n"
              << "Content-Length: " << fileLength << "\r\n"
              << "Content-Type: " << mime_map[fileType] << "\r\n";

@@ -8,8 +8,9 @@
 #include <sys/socket.h>
 
 
-CClient::CClient(const std::string& root, CThreadPool* threadPoll ) : threadPool(threadPoll)   {
-    httpRequest = new CHTTPRequest(root);
+CClient::CClient(const std::string& root, CThreadPool* threadPoll, CClientsBuffer* clientsBuffer ) :
+        threadPool(threadPoll), clientsBuffer(clientsBuffer)   {
+    httpRequest = new CHTTPRequest(root, threadPoll);
 }
 
 CClient::~CClient() {
@@ -29,40 +30,35 @@ void CClient::Write(int fd, const std::string &message) {
         }
         left -= sent;
     }
+
 }
 
-void CClient::Read(ClientBuf* clientBuf) {
+void CClient::Read(int fd) {
     char buf[MAX_REQUEST_LEN];
-        ssize_t n = recv(clientBuf->fd, buf, sizeof(buf), 0);
+        ssize_t n = recv(fd, buf, sizeof(buf), 0);
         if (n == -1 && errno != EAGAIN) {
             throw std::runtime_error("read: " + std::string(strerror(errno)));
         }
         if (n == 0 || n == -1) {
-            clientBuf->data.append(buf, (unsigned long)n);
+            clientsBuffer->AddData(fd, buf, (size_t) n);
             try {
-                std::string res = httpRequest->RequestHandle(clientBuf->data);
-                clientBuf->status = WANT_WRITE;
-                std::function<void()> onWrite;
-                onWrite = std::bind(&CClient::Write, &*this, clientBuf->fd, res);
-
-                threadPool->AddTask(onWrite);
-            } catch (std::runtime_error) {
+                httpRequest->RequestHandle(clientsBuffer->GetData(fd), this, fd);
+                clientsBuffer->SetWantToWrite(fd);
+            } catch (std::runtime_error ex) {
                 return;
             }
         }
-        clientBuf->data.append(buf, (unsigned long)n);
+        clientsBuffer->AddData(fd, buf, (size_t) n);
     try {
-        std::string res = httpRequest->RequestHandle(clientBuf->data);
-        clientBuf->status = WANT_WRITE;
-        std::function<void()> onWrite;
-        onWrite = std::bind(&CClient::Write, &*this, clientBuf->fd, res);
 
-        threadPool->AddTask(onWrite);
+        httpRequest->RequestHandle(clientsBuffer->GetData(fd), this, fd);
+        clientsBuffer->SetWantToWrite(fd);
     } catch (std::runtime_error) {
         return;
     }
 }
 
 void CClient::Close(int fd) {
+    clientsBuffer->SetWantToClose(fd);
     close(fd);
 }

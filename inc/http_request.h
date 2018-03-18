@@ -8,12 +8,18 @@
 #include <iostream>
 #include <unordered_map>
 #include <functional>
+#include "threadpool.h"
+#include "client.h"
 
 #define BUFFER_SIZE 4096
+
+
+class CClient;
 
 class CHTTPRequest {
 private:
     std::string rootDir;
+    CThreadPool* threadPool;
 
     //std::string header;
 
@@ -63,16 +69,16 @@ private:
     std::string getFileType(const std::string& path);
     std::string buidHeader(size_t fileLength, const std::string& fileType,
                            const std::string &protocol,  const std::string &code);
-    std::string GET(const std::string& url, const std::string& protocol);
-    std::string HEAD(const std::string& url, const std::string& protocol);
-    std::string NotAllowed(const std::string& protocol);
-    std::string NotImplemented(const std::string& protocol);
+    void GET(const std::string& url, const std::string& protocol, CClient* client, int fd);
+    void HEAD(const std::string& url, const std::string& protocol, CClient* client, int fd);
+    void NotAllowed(const std::string& protocol, CClient* client, int fd);
+    void NotImplemented(const std::string& protocol, CClient* client, int fd);
 
 
 
 public:
-    std::string RequestHandle(std::string request);
-    CHTTPRequest(const std::string& root);
+    void RequestHandle(std::string request, CClient* client, int fd);
+    CHTTPRequest(const std::string& root, CThreadPool* threadPool);
     //void RequestAdd(char* request);
 
     CHTTPRequest();
