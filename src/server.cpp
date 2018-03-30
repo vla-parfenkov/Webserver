@@ -12,9 +12,8 @@
 CServer::CServer(const std::string &addr, const std::uint16_t &port, const std::uint32_t& queueSize,
                  const std::string& root, size_t threadCount) : stop(false){
     threadPool = new CThreadPool(threadCount);
-    clientsBuffer = new CClientsBuffer();
-    client = new CClient(root, threadPool, clientsBuffer);
-    epollEngine = new CEpollEngine(MAX_EPOLL_EVENT, EPOLL_TIMEOUT, client, threadPool, clientsBuffer);
+    handler = new CHTTPHandler(root);
+    epollEngine = new CEpollEngine(MAX_EPOLL_EVENT, EPOLL_TIMEOUT, handler, threadPool);
     sockaddr_in serveraddr;
 
     listenfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -49,7 +48,7 @@ CServer::CServer(const std::string &addr, const std::uint16_t &port, const std::
 CServer::~CServer() {
     delete epollEngine;
     delete threadPool;
-    delete client;
+    delete handler;
 }
 
 void CServer::Listen() {

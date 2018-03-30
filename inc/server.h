@@ -15,6 +15,7 @@
 #define MAX_EPOLL_EVENT 300
 #define EPOLL_TIMEOUT 50
 
+#include "http_handler.h"
 
 class CServer {
 private:
@@ -23,8 +24,7 @@ private:
     bool stop;
     CEpollEngine* epollEngine;
     CThreadPool* threadPool;
-    CClient* client;
-    CClientsBuffer* clientsBuffer;
+    CHTTPHandler* handler;
 
 public:
 
