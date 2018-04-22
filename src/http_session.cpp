@@ -37,7 +37,6 @@ void CHTTPSession::Close() {
     file.clear();
     std::cout <<"close " << fd << std::endl;
     close(fd);
-    clientStatus = CLOSED;
 }
 
 void CHTTPSession::Read() {
@@ -47,14 +46,16 @@ void CHTTPSession::Read() {
     if (n == -1 && errno != EAGAIN) {
         throw std::runtime_error("read: " + std::string(strerror(errno)));
     }
-    request.append(buf, (size_t) n);
-    try {
+    if( errno != EAGAIN || errno != EWOULDBLOCK  ) {
+        request.append(buf, (size_t) n);
+        try {
 
-        handler->RequestHandle(request, responceHeader, filePath, responce);
-        clientStatus = WANT_HEADER;
-        RecvHeader();
-    } catch (std::runtime_error) {
-        return;
+            handler->RequestHandle(request, responceHeader, filePath, responce);
+            clientStatus = WANT_HEADER;
+            mod();
+        } catch (std::runtime_error) {
+            return;
+        }
     }
 }
 
@@ -64,16 +65,14 @@ void CHTTPSession::RecvHeader() {
             if (!filePath.empty()) {
                 file.open(filePath, std::ifstream::in);
                 clientStatus = WANT_FILE;
-                RecvFile();
             } else {
                 if (!responce.empty()) {
                 clientStatus = WANT_RESPONCE;
-                    RecvResponce();
                 } else {
                     clientStatus = WANT_CLOSE;
-                    mod();
                 }
             }
+            mod();
         }
     } catch (std::runtime_error ex) {
         throw std::runtime_error("send: " + std::string(strerror(errno)));

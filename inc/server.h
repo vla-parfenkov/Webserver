@@ -12,7 +12,7 @@
 #include "threadpool.h"
 #include "epollengine.h"
 
-#define MAX_EPOLL_EVENT 300
+#define MAX_EPOLL_EVENT 1000
 #define EPOLL_TIMEOUT 10
 
 #include "http_handler.h"

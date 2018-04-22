@@ -40,23 +40,7 @@ void CEpollEngine::Run() {
                     onRead = std::bind(&CHTTPSession::Read, &*session);
                     threadPool->AddTask(onRead);
                 }
-            }
-            if (events[i].events & EPOLLOUT) {
-                /*if (session->Status() == WANT_CLOSE) {
-                    std::function<void()> onClose;
-                    onClose = std::bind(&CHTTPSession::Close, &*session);
-                    threadPool->AddTask(onClose);
-                }*/
-                if (session->Status() == WANT_CLOSE) {
-                    epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, 0);
-                    delete session;
-                    //sessionMap.erase(fd);
-                    std::cout <<"close " << fd << std::endl;
-                    close(fd);
-                }
-
-            }
-           /*if (events[i].events & EPOLLOUT) {
+            } else if (events[i].events & EPOLLOUT) {
                 switch (session->Status()) {
                     case WANT_HEADER : {
                         std::cout << "header " << fd << std::endl;
@@ -83,16 +67,24 @@ void CEpollEngine::Run() {
                         break;
                     }
                   case WANT_CLOSE: {
+                        epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, 0);
                         delete session;
-                        //sessionMap.erase(fd);
-                        //close(fd);
+                        sessionMap.erase(fd);
+                        std::cout <<"close " << fd << std::endl;
+                        close(fd);
                         break;
                     }
                     default:
                         break;
 
                 }
-            }*/
+            } else if ( events[i].events & ( EPOLLRDHUP | EPOLLHUP | EPOLLERR ) ) {
+                epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, 0);
+                delete session;
+                sessionMap.erase(fd);
+                std::cout <<"close " << fd << std::endl;
+                close(fd);
+            }
         }
     }
 }
