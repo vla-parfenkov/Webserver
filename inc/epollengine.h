@@ -12,6 +12,8 @@
 #include <map>
 
 
+
+
 class CEpollEngine {
 private:
     int epollfd;
@@ -20,6 +22,7 @@ private:
     std::atomic_bool stop;
     CHTTPHandler* handler;
     CThreadPool* threadPool;
+    CHTTPSession* sessions;
     std::map<int, CHTTPSession*> sessionMap;
 
 public:

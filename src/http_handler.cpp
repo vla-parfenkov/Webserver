@@ -152,11 +152,13 @@ void CHTTPHandler::HEAD(const std::string &url, const std::string &protocol, std
         struct stat file;
         stat(path.c_str(), &file);
         header = buidHeader((size_t )file.st_size, type, protocol, getCode(code));
+        header.append("\r\n");
 
     } else {
         code = (dir) ? 403 : 404;
 
        header = buidHeader(strlen((dir) ? forbidden : notFound), "html", protocol, getCode(code));
+        header.append("\r\n");
     }
 
 }

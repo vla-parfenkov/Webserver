@@ -4,25 +4,27 @@
 
 #include <sys/epoll.h>
 #include "epollengine.h"
+
+
+
 #include <unistd.h>
-
-
-
-
 
 CEpollEngine::CEpollEngine(int maxEpollEvents, int timeout, CHTTPHandler* handler, CThreadPool* threadPool) :
         maxEpollEvents(maxEpollEvents), timeout(timeout), stop(false), handler(handler),
         threadPool(threadPool) {
     epollfd = epoll_create(maxEpollEvents);
+
 }
 
 void CEpollEngine::AddFd(int clientfd) {
-    sessionMap.insert(std::pair<int, CHTTPSession*>(clientfd, new CHTTPSession(clientfd,handler)));
+    sessionMap.insert(std::pair<int, CHTTPSession*>(clientfd, new CHTTPSession(clientfd,handler, epollfd)));
     epoll_event ev;
-    ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLOUT | EPOLLET ;
+    ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLET;
     ev.data.fd = clientfd;
     epoll_ctl(epollfd, EPOLL_CTL_ADD, clientfd, &ev);
 }
+
+
 
 
 void CEpollEngine::Run() {
@@ -30,16 +32,29 @@ void CEpollEngine::Run() {
     while (!stop) {
         ssize_t fdcount = epoll_wait(epollfd, events, maxEpollEvents, timeout);
         for (uint32_t  i = 0; i < fdcount; ++i) {
-            std::cout <<"read";
             int fd = events[i].data.fd;
             CHTTPSession* session = sessionMap.at(fd);
             if (events[i].events & EPOLLIN) {
                 if (session->Status() == WANT_READ) {
                     std::function<void()> onRead;
-
                     onRead = std::bind(&CHTTPSession::Read, &*session);
                     threadPool->AddTask(onRead);
                 }
+            }
+            if (events[i].events & EPOLLOUT) {
+                /*if (session->Status() == WANT_CLOSE) {
+                    std::function<void()> onClose;
+                    onClose = std::bind(&CHTTPSession::Close, &*session);
+                    threadPool->AddTask(onClose);
+                }*/
+                if (session->Status() == WANT_CLOSE) {
+                    epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, 0);
+                    delete session;
+                    //sessionMap.erase(fd);
+                    std::cout <<"close " << fd << std::endl;
+                    close(fd);
+                }
+
             }
            /*if (events[i].events & EPOLLOUT) {
                 switch (session->Status()) {

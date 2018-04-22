@@ -13,7 +13,7 @@
 #include "epollengine.h"
 
 #define MAX_EPOLL_EVENT 300
-#define EPOLL_TIMEOUT 50
+#define EPOLL_TIMEOUT 10
 
 #include "http_handler.h"
 

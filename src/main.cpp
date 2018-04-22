@@ -8,7 +8,8 @@ int main(int argc, char* argv[]) {
     rootDir = rootDir.substr(0, rootDir.find_last_of('/'));
     CConfig* config = new CConfig(rootDir);
 
-    CServer* server = new CServer(config->Addr(), config->Port(), config->QueueSize(), config->Root(), config->Thread());
+    CServer* server = new CServer(config->Addr(), config->Port(), config->QueueSize(), rootDir, config->Thread());
+    //CServer* server = new CServer("0.0.0.0", 8080, 40, "/var/www/html", 6);
 
     server->Listen();
 
