@@ -6,7 +6,7 @@
 int main(int argc, char* argv[]) {
     std::string rootDir = argv[0];
     rootDir = rootDir.substr(0, rootDir.find_last_of('/'));
-    CConfig* config = new CConfig(rootDir);
+    CConfig* config = new CConfig("/etc");
 
     CServer* server = new CServer(config->Addr(), config->Port(), config->QueueSize(), rootDir, config->Thread());
 

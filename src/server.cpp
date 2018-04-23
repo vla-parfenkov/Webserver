@@ -6,7 +6,7 @@
 #include <cstring>
 #include <fcntl.h>
 #include <sys/socket.h>
-#include <zconf.h>
+#include <unistd.h>
 #include "server.h"
 
 CServer::CServer(const std::string &addr, const std::uint16_t &port, const std::uint32_t& queueSize,
@@ -49,6 +49,7 @@ CServer::~CServer() {
     delete epollEngine;
     delete threadPool;
     delete handler;
+    close(listenfd);
 }
 
 void CServer::Listen() {

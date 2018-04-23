@@ -30,14 +30,14 @@ private:
     int epollfd;
 
     bool write(const std::string &message);
-    void mod();
+    void mod(uint32_t flag);
 
 public:
 
     CHTTPSession(int fd, CHTTPHandler* handler, int epoll);
     ~CHTTPSession();
 
-
+    void Init();
     void Read();
     void RecvHeader();
     void RecvFile();

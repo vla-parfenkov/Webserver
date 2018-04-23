@@ -12,18 +12,26 @@
 #include <unistd.h>
 
 #include <sys/epoll.h>
+#include <bits/signum.h>
 
 
 CHTTPSession::CHTTPSession(int fd, CHTTPHandler* handler, int epoll) : fd(fd), handler(handler), epollfd(epoll),
                                                                        clientStatus(WANT_READ){
 }
+//CHTTPSession::CHTTPSession () {}
 
 CHTTPSession::~CHTTPSession() {
 }
 
-void CHTTPSession::mod() {
+/*void CHTTPSession::Init(int newfd, CHTTPHandler* newhandler, int epoll) {
+    fd = newfd;
+    handler = newhandler;
+    epollfd
+}*/
+
+void CHTTPSession::mod(uint32_t flag) {
     epoll_event ev;
-    ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLET | EPOLLOUT;
+    ev.events = flag | EPOLLERR | EPOLLHUP | EPOLLET | EPOLLONESHOT;
     ev.data.fd = fd;
     epoll_ctl(epollfd, EPOLL_CTL_MOD, fd, &ev);
 }
@@ -43,6 +51,7 @@ void CHTTPSession::Read() {
     char buf[ BUFFER_SIZE];
     std::cout <<"read " << fd << std::endl;
     ssize_t n = recv(fd, buf, sizeof(buf), 0);
+    std::cout <<"read finish " << fd << std::endl;
     if (n == -1 && errno != EAGAIN) {
         throw std::runtime_error("read: " + std::string(strerror(errno)));
     }
@@ -52,8 +61,9 @@ void CHTTPSession::Read() {
 
             handler->RequestHandle(request, responceHeader, filePath, responce);
             clientStatus = WANT_HEADER;
-            mod();
+            mod(EPOLLOUT);
         } catch (std::runtime_error) {
+            mod(EPOLLIN);
             return;
         }
     }
@@ -70,9 +80,10 @@ void CHTTPSession::RecvHeader() {
                 clientStatus = WANT_RESPONCE;
                 } else {
                     clientStatus = WANT_CLOSE;
+                    //close(fd);
                 }
             }
-            mod();
+            mod(EPOLLOUT);
         }
     } catch (std::runtime_error ex) {
         throw std::runtime_error("send: " + std::string(strerror(errno)));
@@ -84,11 +95,16 @@ void CHTTPSession::RecvFile() {
     size_t bufferCount;
     if (file.is_open()) {
            while ((bufferCount = (size_t) file.readsome(buffer, BUFFER_SIZE)) > 0) {
-                write(std::string(buffer, bufferCount));
+               try {
+                   write(std::string(buffer, bufferCount));
+               } catch (...) {
+
+               }
             }
         file.close();
         clientStatus = WANT_CLOSE;
-        mod();
+        //Close();
+        mod(EPOLLOUT);
         }
     }
 
@@ -117,13 +133,14 @@ bool CHTTPSession::write(const std::string &message) {
         }
         left -= sent;
     }
+    std::cout <<"write finish " << fd << std::endl;
 }
 
 void CHTTPSession::RecvResponce() {
     try {
         if( write(responce) ) {
             clientStatus = WANT_CLOSE;
-            mod();
+            mod(EPOLLOUT);
         }
     } catch (std::runtime_error ex) {
         throw std::runtime_error("send: " + std::string(strerror(errno)));

@@ -19,7 +19,7 @@ CEpollEngine::CEpollEngine(int maxEpollEvents, int timeout, CHTTPHandler* handle
 void CEpollEngine::AddFd(int clientfd) {
     sessionMap.insert(std::pair<int, CHTTPSession*>(clientfd, new CHTTPSession(clientfd,handler, epollfd)));
     epoll_event ev;
-    ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLET;
+    ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLET | EPOLLONESHOT;
     ev.data.fd = clientfd;
     epoll_ctl(epollfd, EPOLL_CTL_ADD, clientfd, &ev);
 }
@@ -32,59 +32,78 @@ void CEpollEngine::Run() {
     while (!stop) {
         ssize_t fdcount = epoll_wait(epollfd, events, maxEpollEvents, timeout);
         for (uint32_t  i = 0; i < fdcount; ++i) {
-            int fd = events[i].data.fd;
-            CHTTPSession* session = sessionMap.at(fd);
-            if (events[i].events & EPOLLIN) {
-                if (session->Status() == WANT_READ) {
-                    std::function<void()> onRead;
-                    onRead = std::bind(&CHTTPSession::Read, &*session);
-                    threadPool->AddTask(onRead);
+           int fd = events[i].data.fd;
+               CHTTPSession *session;
+                //try {
+                    session = sessionMap.at(fd);
+                /*} catch (std::out_of_range) {
+                    AddFd(fd);
+                    session = sessionMap.at(fd);
+                }*/
+                if (events[i].events & EPOLLIN) {
+                    if (session->Status() == WANT_READ) {
+                        std::function<void()> onRead;
+                        onRead = std::bind(&CHTTPSession::Read, &*session);
+                        threadPool->AddTask(onRead);
+                    }
+                } else if (events[i].events & EPOLLOUT) {
+                    switch (session->Status()) {
+                        case WANT_HEADER : {
+                            std::cout << "header " << fd << std::endl;
+                            std::function<void()> onWriteHeader;
+                            onWriteHeader = std::bind(&CHTTPSession::RecvHeader, &*session);
+                            session->SetStatus(USED);
+                            threadPool->AddTask(onWriteHeader);
+                            break;
+                        }
+                        case WANT_RESPONCE: {
+                            std::cout << "responce " << fd << std::endl;
+                            std::function<void()> onWriteResponce;
+                            onWriteResponce = std::bind(&CHTTPSession::RecvResponce, &*session);
+                            session->SetStatus(USED);
+                            threadPool->AddTask(onWriteResponce);
+                            break;
+                        }
+                        case WANT_FILE: {
+                            std::cout << "file " << fd << std::endl;
+                            std::function<void()> onWriteFile;
+                            onWriteFile = std::bind(&CHTTPSession::RecvFile, &*session);
+                            session->SetStatus(USED);
+                            threadPool->AddTask(onWriteFile);
+                            break;
+                        }
+                        case WANT_CLOSE: {
+                            epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, 0);
+                            delete session;
+                            sessionMap.erase(fd);
+                            std::cout << "close " << fd << std::endl;
+                            close(fd);
+                            break;
+                        }
+                        /*case USED: {
+                                epoll_event ev;
+                                ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLET | EPOLLONESHOT | EPOLLOUT;
+                                ev.data.fd = fd;
+                                epoll_ctl(epollfd, EPOLL_CTL_MOD, fd, &ev);
+                                break;
+                            }*/
+                        default:
+                            break;
+                    }
+                } else if (events[i].events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)) {
+                    epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, 0);
+                    delete session;
+                    sessionMap.erase(fd);
+                    std::cout << "close " << fd << std::endl;
+                    close(fd);
                 }
-            } else if (events[i].events & EPOLLOUT) {
-                switch (session->Status()) {
-                    case WANT_HEADER : {
-                        std::cout << "header " << fd << std::endl;
-                        std::function<void()> onWriteHeader;
-                        onWriteHeader = std::bind(&CHTTPSession::RecvHeader, &*session);
-                        session->SetStatus(USED);
-                        threadPool->AddTask(onWriteHeader);
-                        break;
-                    }
-                    case WANT_RESPONCE: {
-                        std::cout << "responce " << fd << std::endl;
-                        std::function<void()> onWriteResponce;
-                        onWriteResponce = std::bind(&CHTTPSession::RecvResponce, &*session);
-                        session->SetStatus(USED);
-                        threadPool->AddTask(onWriteResponce);
-                        break;
-                    }
-                    case WANT_FILE: {
-                        std::cout << "file " << fd << std::endl;
-                        std::function<void()> onWriteFile;
-                        onWriteFile = std::bind(&CHTTPSession::RecvFile, &*session);
-                        session->SetStatus(USED);
-                        threadPool->AddTask(onWriteFile);
-                        break;
-                    }
-                  case WANT_CLOSE: {
-                        epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, 0);
-                        delete session;
-                        sessionMap.erase(fd);
-                        std::cout <<"close " << fd << std::endl;
-                        close(fd);
-                        break;
-                    }
-                    default:
-                        break;
-
-                }
-            } else if ( events[i].events & ( EPOLLRDHUP | EPOLLHUP | EPOLLERR ) ) {
-                epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, 0);
-                delete session;
-                sessionMap.erase(fd);
-                std::cout <<"close " << fd << std::endl;
-                close(fd);
-            }
+                /*if (session->Status() == WANT_CLOSE) {
+                    epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, 0);
+                    delete session;
+                    sessionMap.erase(fd);
+                    std::cout <<"close " << fd << std::endl;
+                    close(fd);
+                }*/
         }
     }
 }
