@@ -5,7 +5,7 @@ RUN apt-get -y install g++
 
 
 
-ADD /webserver/ ./
+ADD / ./
 
 RUN g++ src/*.cpp -std=c++14
 
