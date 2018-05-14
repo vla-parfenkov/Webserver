@@ -7,13 +7,14 @@
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <sys/epoll.h>
 #include "server.h"
 
 CServer::CServer(const std::string &addr, const std::uint16_t &port, const std::uint32_t& queueSize,
                  const std::string& root, size_t threadCount) : stop(false){
-    threadPool = new CThreadPool(threadCount);
     handler = new CHTTPHandler(root);
-    epollEngine = new CEpollEngine(MAX_EPOLL_EVENT, EPOLL_TIMEOUT, handler, threadPool);
+    threadPool = new CThreadPool(threadCount, MAX_EPOLL_EVENT, EPOLL_TIMEOUT, handler);
+    epollEngine = new CEpollEngine(MAX_EPOLL_EVENT, EPOLL_TIMEOUT);
     sockaddr_in serveraddr;
 
     listenfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -39,10 +40,7 @@ CServer::CServer(const std::string &addr, const std::uint16_t &port, const std::
         throw std::runtime_error("listen: " + std::string(strerror(errno)));
     }
 
-    std::function<void()> runEpoll;
-    runEpoll = std::bind(&CEpollEngine::Run, &*epollEngine);
-
-    threadPool->AddTask(runEpoll);
+    epollEngine->AddFd(listenfd, epollEngine->Epollfd());
 }
 
 CServer::~CServer() {
@@ -57,11 +55,21 @@ void CServer::Listen() {
     socklen_t clientlen;
 
     while(!stop) {
-        ssize_t coonectionfd = accept(listenfd, (sockaddr*)&clientaddr, &clientlen);
-        if (coonectionfd >= 0) {
-            int flags = fcntl((int)coonectionfd, F_GETFL, 0);
-            if (fcntl((int)coonectionfd, F_SETFL, flags | O_NONBLOCK) != -1) {
-                epollEngine->AddFd((int)coonectionfd);
+        epoll_event events[MAX_EPOLL_EVENT];
+        ssize_t fdcount = epollEngine->Wait(events);
+        for (uint32_t  i = 0; i < fdcount; ++i) {
+            int fd = events[i].data.fd;
+            if (fd == listenfd) {
+                ssize_t coonectionfd = accept(listenfd, (sockaddr*)&clientaddr, &clientlen);
+                if (coonectionfd >= 0) {
+                    int flags = fcntl((int)coonectionfd, F_GETFL, 0);
+                    if (fcntl((int)coonectionfd, F_SETFL, flags | O_NONBLOCK) != -1) {
+                        std::function<int(int)> Add;
+                        Add = std::bind(&CEpollEngine::AddFd, &*epollEngine, coonectionfd, std::placeholders::_1 );
+
+                        threadPool->AddTask(Add);
+                    }
+                }
             }
         }
     }

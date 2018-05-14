@@ -39,6 +39,7 @@ public:
     std::string Addr();
     std::string Root();
     std::uint32_t QueueSize();
+    std::uint16_t Cpu();
     bool IsValid();
 
 

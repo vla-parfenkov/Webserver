@@ -68,3 +68,7 @@ std::string CConfig::Root() {
 std::uint32_t CConfig::QueueSize() {
     return queueSize;
 }
+
+std::uint16_t CConfig::Cpu() {
+    return cpu;
+}

@@ -7,9 +7,8 @@
 
 #include <atomic>
 #include "threadpool.h"
-#include "http_session.h"
-#include "http_handler.h"
-#include <map>
+#include <sys/epoll.h>
+
 
 
 
@@ -20,18 +19,17 @@ private:
     int maxEpollEvents;
     int timeout;
     std::atomic_bool stop;
-    CHTTPHandler* handler;
-    CThreadPool* threadPool;
-    CHTTPSession* sessions;
-    std::map<int, CHTTPSession*> sessionMap;
+
 
 public:
-    CEpollEngine(int maxEpollEvents, int timeout, CHTTPHandler* handler, CThreadPool* threadPool);
+    CEpollEngine(int maxEpollEvents, int timeout);
     ~CEpollEngine();
 
-    void Run();
-    void AddFd(int clientfd);
-    void Stop();
+    //void Run();
+    int AddFd(int clientfd, int epollfd);
+    //void Stop();
+    ssize_t Wait(epoll_event* events);
+    int Epollfd();
 };
 
 

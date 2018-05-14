@@ -12,7 +12,7 @@
 
 
 enum ClientStatus{
-    WANT_READ, WANT_HEADER, WANT_FILE, WANT_RESPONCE, WANT_CLOSE, USED
+    WANT_READ, WANT_HEADER, WANT_FILE, WANT_RESPONCE, WANT_CLOSE
 };
 
 
@@ -28,8 +28,11 @@ private:
     ClientStatus clientStatus;
     CHTTPHandler* handler;
     int epollfd;
+    ssize_t leftData;
+    ssize_t sentData;
 
-    bool write(const std::string &message);
+    //bool write(const std::string &message);
+    bool write (const char *data, size_t size);
     void mod(uint32_t flag);
 
 public:
