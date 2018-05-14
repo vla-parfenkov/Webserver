@@ -1,18 +1,12 @@
-FROM fedora
-
+FROM ubuntu:16.04
 MAINTAINER Parfenkov Vladislav
+RUN apt-get update && apt-get install -y --no-install-recommends apt-utils
+RUN apt-get -y install g++
 
 
-RUN yum install -y gcc-c++
-RUN yum install -y cmake
-RUN yum install -y make
 
-ADD . /app
-WORKDIR /app
+ADD /webserver/ ./
 
-RUN cmake CMakeLists.txt
-RUN make
-
-CMD ./webserver 80 
+RUN g++ src/*.cpp -std=c++14
 
 EXPOSE 80
