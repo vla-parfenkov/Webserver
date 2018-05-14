@@ -9,7 +9,7 @@ RUN yum install -y make
 ADD . /app
 WORKDIR /app
 
-RUN cmake 3.6 CMakeLists.txt
+RUN cmake CMakeLists.txt
 RUN make
 
 CMD ./webserver 80 
