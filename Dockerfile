@@ -5,6 +5,8 @@ RUN apt-get -y install g++
 RUN apt-get -y install cmake 
 RUN apt-get -y install make
 
+RUN ln -s /usr/include/x86_64-linux-gnu/zconf.h /usr/include
+
 ADD . /app
 WORKDIR /app
 
