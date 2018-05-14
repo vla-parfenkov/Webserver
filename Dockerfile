@@ -2,6 +2,7 @@ FROM fedora
 
 MAINTAINER Parfenkov Vladislav
 
+RUN apk add --no-cache build-base
 RUN yum install -y gcc-c++
 RUN yum install -y cmake
 RUN yum install -y make

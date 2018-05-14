@@ -7,7 +7,7 @@
 
 #define ADDR "addr"
 #define PORT "port"
-#define CPU "cpu"
+#define CPU "cpu_limit"
 #define THREAD "thread"
 #define ROOT "document_root"
 #define QUEUE "queue_size"
