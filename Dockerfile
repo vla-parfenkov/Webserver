@@ -5,7 +5,8 @@ RUN apt-get -y install g++
 RUN apt-get -y install cmake
 RUN apt-get -y install make
 
-
+ADD . /app
+WORKDIR /app
 
 RUN cmake CMakeLists.txt
 RUN make
