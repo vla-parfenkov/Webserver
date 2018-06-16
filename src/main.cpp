@@ -10,6 +10,7 @@ int main(int argc, char* argv[]) {
 
     CServer* server = new CServer(config->Addr(), config->Port(), config->QueueSize(), config->Root(), config->Cpu());
 
+    std::cout << "Server start" << std::endl;
     server->Listen();
 
     delete server;
