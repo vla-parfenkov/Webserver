@@ -1,11 +1,10 @@
-FROM ubuntu:16.04
-MAINTAINER Parfenkov Vladislav
-RUN apt-get update && apt-get install -y --no-install-recommends apt-utils
-RUN apt-get -y install g++
-RUN apt-get -y install cmake 
-RUN apt-get -y install make
+FROM fedora
 
-RUN ln -s /usr/include/x86_64-linux-gnu/zconf.h /usr/include
+MAINTAINER Parfenkov Vladislav
+
+RUN yum install -y gcc-c++
+RUN yum install -y cmake
+RUN yum install -y make
 
 ADD . /app
 WORKDIR /app
@@ -13,6 +12,6 @@ WORKDIR /app
 RUN cmake CMakeLists.txt
 RUN make
 
-CMD ./webserver 
+CMD ./webserver 80 
 
 EXPOSE 80

@@ -6,6 +6,7 @@
 #include <cstring>
 #include <fstream>
 #include <sys/stat.h>
+#include <zconf.h>
 #include <ctime>
 #include <chrono>
 #include "http_handler.h"
@@ -178,14 +179,7 @@ void CHTTPHandler::NotImplemented(const std::string &protocol, std::string& head
 }
 
 bool CHTTPHandler::fileExists(const std::string &path) {
-    bool isExist = false;
-    std::ifstream fin(path.c_str());
-
-    if(fin.is_open())
-        isExist = true;
-
-    fin.close();
-    return isExist;
+    return access(path.c_str(), 0) != -1;
 }
 
 std::string CHTTPHandler::getFileType(const std::string &path) {
