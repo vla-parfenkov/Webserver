@@ -12,7 +12,7 @@
 #include <unistd.h>
 
 #include <sys/epoll.h>
-#include <bits/signum.h>
+
 
 
 CHTTPSession::CHTTPSession(int fd, CHTTPHandler* handler, int epoll) : fd(fd), handler(handler), epollfd(epoll),
