@@ -12,7 +12,7 @@
 
 CServer::CServer(const std::string &addr, const std::uint16_t &port, const std::uint32_t& queueSize,
                  const std::string& root, size_t threadCount) : stop(false){
-    std::cout << "Server Parameters: " << std::endl;
+    std::cout << "Server parameters: " << std::endl;
     std::cout << "root: " << root << std::endl;
     std::cout << "thread: " << threadCount << std::endl;
     std::cout << "address: " << addr << std::endl;
