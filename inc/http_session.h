@@ -30,6 +30,9 @@ private:
     int epollfd;
     ssize_t leftData;
     ssize_t sentData;
+    size_t fileBufferCount;
+    char fileBuffer[BUFFER_SIZE];
+    bool flagEAGAIN;
 
     //bool write(const std::string &message);
     bool write (const char *data, size_t size);

@@ -16,7 +16,7 @@
 
 
 CHTTPSession::CHTTPSession(int fd, CHTTPHandler* handler, int epoll) : fd(fd), handler(handler), epollfd(epoll),
-                                                                       clientStatus(WANT_READ){
+                                                                       clientStatus(WANT_READ), flagEAGAIN(false){
 }
 
 
@@ -85,30 +85,46 @@ void CHTTPSession::RecvHeader() {
 }
 
 void CHTTPSession::RecvFile() {
-    char buffer[BUFFER_SIZE];
-    size_t bufferCount;
-    if (file.is_open()) {
-           while ((bufferCount = (size_t) file.readsome(buffer, BUFFER_SIZE)) > 0) {
-               leftData = bufferCount;
-               sentData = 0;
-               while (leftData > 0) {
-                   write(buffer, bufferCount);
-               }
+    if (flagEAGAIN) {
+        while (leftData > 0) {
+            try {
+                write(fileBuffer,fileBufferCount);
+            } catch (std::runtime_error) {
+                flagEAGAIN = true;
+                return;
             }
+        }
+        flagEAGAIN = false;
+    }
+    if (file.is_open()) {
+        while ((fileBufferCount = (size_t) file.readsome(fileBuffer, BUFFER_SIZE)) > 0) {
+            leftData = fileBufferCount;
+            sentData = 0;
+            while (leftData > 0) {
+                try {
+                    write(fileBuffer,fileBufferCount);
+                } catch (std::runtime_error) {
+                    flagEAGAIN = true;
+                    return;
+                }
+            }
+        }
         file.close();
         clientStatus = WANT_CLOSE;
-           }
+    }
 
-        }
+}
 
 
 
 bool CHTTPSession::write(const char *data, size_t size) {
+    ssize_t sendResult;
     if (leftData > 0) {
-        sentData = send(fd, data + sentData, size - sentData, 0);
-        if (sentData == -1) {
+        sendResult = send(fd, data + sentData, size - sentData, 0);
+        if (sendResult == -1) {
             throw std::runtime_error("send: " + std::string(strerror(errno)));
         }
+        sentData = sendResult;
         leftData -= sentData;
     }
     return leftData == 0;
@@ -134,7 +150,6 @@ void CHTTPSession::RecvResponce() {
         if( write(responce.data(), responce.size()) ) {
             clientStatus = WANT_CLOSE;
         }
-        //mod(EPOLLOUT);
     } catch (std::runtime_error ex) {
         throw std::runtime_error("send: " + std::string(strerror(errno)));
     }

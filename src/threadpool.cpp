@@ -73,24 +73,18 @@ void CThreadPool::worker() {
                             session->RecvFile();
                             break;
                         }
-                        case WANT_CLOSE: {
-                            epoll_ctl(epollEngine->Epollfd(), EPOLL_CTL_DEL, fd, 0);
-                            session->Close();
-                            delete session;
-                            sessionMap.erase(fd);
-                            break;
-                        }
-
                         default:
                             break;
                     }
                 } else if (events[i].events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)) {
+                    session->SetStatus(WANT_CLOSE);
+                }
+                if (session->Status() == WANT_CLOSE) {
                     epoll_ctl(epollEngine->Epollfd(), EPOLL_CTL_DEL, fd, 0);
                     session->Close();
                     delete session;
                     sessionMap.erase(fd);
                 }
-
             }
             }
         }
