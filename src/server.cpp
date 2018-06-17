@@ -71,7 +71,6 @@ void CServer::Listen() {
                     if (fcntl((int)coonectionfd, F_SETFL, flags | O_NONBLOCK) != -1) {
                         std::function<int(int)> Add;
                         Add = std::bind(&CEpollEngine::AddFd, &*epollEngine, coonectionfd, std::placeholders::_1 );
-
                         threadPool->AddTask(Add);
                     }
                 }

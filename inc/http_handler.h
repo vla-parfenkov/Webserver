@@ -10,8 +10,6 @@
 #include <functional>
 
 
-#define BUFFER_SIZE 4096
-
 
 class CClient;
 

@@ -12,11 +12,13 @@
 #include <unistd.h>
 
 #include <sys/epoll.h>
-
+#include <threadpool.h>
 
 
 CHTTPSession::CHTTPSession(int fd, CHTTPHandler* handler, int epoll) : fd(fd), handler(handler), epollfd(epoll),
-                                                                       clientStatus(WANT_READ), flagEAGAIN(false){
+                                                                       clientStatus(WANT_READ),
+                                                                       flagEAGAIN(false), leftData(0),
+                                                                       sentData(0), fileBufferCount(0) {
 }
 
 
@@ -47,17 +49,14 @@ void CHTTPSession::Read() {
     if (n == -1 && errno != EAGAIN) {
         throw std::runtime_error("read: " + std::string(strerror(errno)));
     }
-    if( errno != EAGAIN || errno != EWOULDBLOCK  ) {
-        request.append(buf, (size_t) n);
-        try {
-
+    request.append(buf, (size_t) n);
+    try {
             handler->RequestHandle(request, responceHeader, filePath, responce);
             leftData = responceHeader.size();
             sentData = 0;
             clientStatus = WANT_HEADER;
-        } catch (std::runtime_error) {
+    } catch (std::runtime_error) {
             return;
-        }
     }
 }
 

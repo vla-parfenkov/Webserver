@@ -32,7 +32,6 @@ void CThreadPool::AddTask(std::function<int(int)> task) {
 }
 
 
-
 void CThreadPool::worker() {
     CEpollEngine* epollEngine = new CEpollEngine(maxEpollEvents, timeout);
     std::map<int, CHTTPSession*> sessionMap;
@@ -42,10 +41,8 @@ void CThreadPool::worker() {
         pop(&task);
         if (task) {
             int clientfd = task(epollEngine->Epollfd());
-
             sessionMap.insert(std::pair<int, CHTTPSession*>(clientfd, new CHTTPSession(clientfd, handler,
                                                                                        epollEngine->Epollfd())));
-
         } else {
             epoll_event events[maxEpollEvents];
             ssize_t fdcount = epollEngine->Wait(events);
@@ -53,7 +50,6 @@ void CThreadPool::worker() {
                 int fd = events[i].data.fd;
                 CHTTPSession *session;
                session = sessionMap.at(fd);
-
                 if (events[i].events & EPOLLIN) {
                     if (session->Status() == WANT_READ) {
                         session->Read();
@@ -65,7 +61,6 @@ void CThreadPool::worker() {
                             break;
                         }
                         case WANT_RESPONCE: {
-
                             session->RecvResponce();
                             break;
                         }
